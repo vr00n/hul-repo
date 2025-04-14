@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatiotemporal Story Map v2 - Hyderabad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* --- Dark Theme Base --- */
+        body {
+            font-family: 'Inter', sans-serif; display: flex; flex-direction: column;
+            height: 100vh; margin: 0; background-color: #111827; /* Gray 900 */
+            overflow: hidden; color: #d1d5db; /* Gray 300 */
+        }
+        /* Main Layout */
+        .main-layout { display: flex; flex-grow: 1; position: relative; overflow: hidden; }
+        .map-content-container { flex-grow: 1; display: flex; flex-direction: column; background-color: #1f2937; /* Gray 800 */ }
+        /* Map Styling */
+        #map { height: 55%; width: 100%; z-index: 10; background-color: #374151; /* Gray 700 */ border-bottom: 1px solid #4b5563; /* Gray 600 */ }
+        /* Controls and Data Area */
+        .controls-data-container { height: 45%; display: flex; flex-direction: column; background-color: #1f2937; /* Gray 800 */ border-top: 1px solid #4b5563; /* Gray 600 */ }
+
+        /* --- Timeline Area Styling (Dark Theme) --- */
+        .timeline-container { padding: 0.75rem 1.5rem; background-color: #111827; border-bottom: 1px solid #374151; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2); z-index: 20; display: flex; flex-direction: column; }
+        .timeline-top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 0.5rem;}
+        .timeline-top-row span { color: #d1d5db; font-weight: 500; }
+        #timeline-year-labels { width: 100%; height: 16px; display: flex; position: relative; margin-bottom: 2px; font-size: 0.65rem; color: #9ca3af; }
+        .year-label { position: absolute; transform: translateX(-50%); }
+        #timeline-histogram-wrapper { position: relative; width: 100%; height: 50px; margin-bottom: 0.75rem; background-color: #374151; border-radius: 0.25rem; padding: 2px; }
+        #timeline-histogram-selection { position: absolute; left: 0%; width: 100%; top: 0; bottom: 0; background-color: rgba(59, 130, 246, 0.15); border-left: 1px solid #60a5fa; border-right: 1px solid #60a5fa; z-index: 1; pointer-events: none; transition: left 0.1s linear, width 0.1s linear; }
+        #timeline-histogram { width: 100%; height: 100%; display: flex; align-items: flex-end; position: relative; z-index: 2; }
+        .histogram-bar { flex-grow: 1; margin: 0 0.5px; background-color: #6b7280; transition: background-color 0.2s ease-in-out, height 0.1s ease-in-out; position: relative; min-width: 1px; border-top-left-radius: 1px; border-top-right-radius: 1px; }
+        .histogram-bar.active { background-color: #60a5fa; }
+        .histogram-bar:hover { opacity: 0.8; }
+        .slider-wrapper { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+        .slider-wrapper label { font-size: 0.75rem; color: #9ca3af; width: 35px; text-align: right; font-weight: 500; }
+        .slider-wrapper input[type=range] { flex-grow: 1; height: 4px; cursor: pointer; appearance: none; width: 100%; background: #4b5563; border-radius: 2px; outline: none; transition: background 0.2s ease; }
+        .slider-wrapper input[type=range]:hover { background: #6b7280; }
+        .slider-wrapper input[type=range]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: #9ca3af; border-radius: 50%; cursor: pointer; margin-top: -5px; border: 2px solid #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .slider-wrapper input[type=range]::-webkit-slider-thumb:hover { background: #d1d5db; }
+        .slider-wrapper input[type=range]::-moz-range-thumb { width: 14px; height: 14px; background: #9ca3af; border-radius: 50%; cursor: pointer; border: 2px solid #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .slider-wrapper input[type=range]::-moz-range-thumb:hover { background: #d1d5db; }
+        #time-range-label { font-size: 0.875rem; color: #e5e7eb; font-weight: 500; text-align: center; margin-top: 0.5rem; min-height: 1.25rem; }
+        #filter-info { font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; text-align: center; }
+        #clear-h3-filter { color: #60a5fa; cursor: pointer; text-decoration: underline; margin-left: 5px; font-weight: 500; }
+        #clear-h3-filter:hover { color: #93c5fd; }
+
+        /* Table Container & Styling (Dark Theme) */
+        .table-container { flex-grow: 1; overflow-y: auto; padding: 1rem 1.5rem; background-color: #1f2937; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #4b5563; padding: 0.6rem 0.8rem; text-align: left; font-size: 0.875rem; line-height: 1.25rem; color: #d1d5db; white-space: nowrap; }
+         td:nth-child(5) { white-space: normal; min-width: 200px; }
+        th { background-color: #374151; font-weight: 600; color: #f9fafb; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; }
+        tbody tr { border-bottom: 1px solid #4b5563; }
+        tbody tr:nth-child(even) { background-color: #374151; }
+        tbody tr:hover { background-color: #4b5563; }
+
+        /* Add Story Sidebar Styles (Dark Theme) */
+        #add-story-sidebar { position: absolute; right: 0; top: 0; bottom: 0; width: 380px; max-width: 90%; background-color: #1f2937; box-shadow: -3px 0 6px rgba(0,0,0,0.25); z-index: 1000; transform: translateX(100%); transition: transform 0.3s ease-in-out; display: flex; flex-direction: column; border-left: 1px solid #4b5563; }
+        #add-story-sidebar.active { transform: translateX(0); }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid #4b5563; background-color: #374151; }
+        .sidebar-title { font-size: 1.125rem; font-weight: 600; color: #f9fafb; }
+        .sidebar-close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #9ca3af; padding: 0; line-height: 1; }
+        .sidebar-close-btn:hover { color: #f9fafb; }
+        #add-story-form { padding: 1.5rem; flex-grow: 1; overflow-y: auto; }
+        #add-story-form label { display: block; margin-bottom: 0.3rem; font-weight: 500; color: #d1d5db; font-size: 0.875rem; }
+        #add-story-form input, #add-story-form select, #add-story-form textarea { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #4b5563; border-radius: 0.375rem; margin-bottom: 1rem; font-size: 0.875rem; background-color: #374151; color: #f3f4f6; }
+        #add-story-form input::placeholder, #add-story-form textarea::placeholder { color: #9ca3af; }
+        #add-story-form input:focus, #add-story-form select:focus, #add-story-form textarea:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4); }
+        #add-story-form input[readonly] { background-color: #4b5563; cursor: not-allowed; color: #9ca3af; }
+        #add-story-form button[type="submit"] { background-color: #2563eb; color: white; padding: 0.7rem 1.5rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; transition: background-color 0.2s ease; width: 100%; margin-top: 0.5rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.15); }
+        #add-story-form button[type="submit"]:hover { background-color: #3b82f6; }
+        #location-info { font-size: 0.8rem; color: #9ca3af; margin-top: -0.75rem; margin-bottom: 1rem; min-height: 1.2em;}
+        .location-type-label { margin-bottom: 0.5rem !important; color: #d1d5db;}
+        .location-type-options label { display: inline-block; margin-right: 1rem; font-weight: 400; font-size: 0.875rem; color: #d1d5db; }
+        .location-type-options input[type="radio"] { margin-right: 0.3rem; accent-color: #60a5fa; }
+        .location-type-options input[type="radio"]:disabled + span { color: #6b7280; }
+
+        /* Map cursor change */
+        .leaflet-grab.select-mode { cursor: crosshair !important; }
+        .h3-selection-marker { font-size: 1.5rem; text-shadow: 0 0 3px black; }
+
+         /* Leaflet Dark Mode Adjustments */
+        .leaflet-tile-pane { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7); } /* Apply CSS filter for dark map tiles */
+        .leaflet-tooltip { background-color: rgba(40, 40, 40, 0.9) !important; color: #f0f0f0 !important; border: 1px solid #555 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.5) !important; }
+        .leaflet-popup-content-wrapper { background-color: #282828 !important; color: #f0f0f0 !important; border-radius: 4px !important; }
+        .leaflet-popup-tip { background-color: #282828 !important; }
+        .leaflet-control-zoom a { background-color: #282828 !important; color: #f0f0f0 !important; border-bottom: 1px solid #555 !important; }
+        .leaflet-control-attribution { background-color: rgba(0,0,0,0.7) !important; color: #ccc !important; }
+        .leaflet-control-attribution a { color: #aaa !important; }
+
+    </style>
+</head>
+<body class="bg-gray-900"> <div class="main-layout">
+        <div class="map-content-container">
+            <div id="map"></div>
+            <div class="controls-data-container">
+                <div class="timeline-container">
+                    <div class="timeline-top-row">
+                        <span class="text-sm font-semibold text-gray-300">Filter Time Range:</span>
+                        <button id="add-story-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md transition duration-150 ease-in-out shadow-sm">
+                            + Add Story
+                        </button>
+                    </div>
+                    <div id="timeline-year-labels"></div>
+                    <div id="timeline-histogram-wrapper">
+                        <div id="timeline-histogram-selection"></div>
+                        <div id="timeline-histogram"></div>
+                    </div>
+                    <div class="slider-wrapper mt-1">
+                        <label for="time-slider-start">Start:</label>
+                        <input id="time-slider-start" type="range" min="0" max="100" value="0">
+                    </div>
+                    <div class="slider-wrapper">
+                        <label for="time-slider-end">End:</label>
+                        <input id="time-slider-end" type="range" min="0" max="100" value="100">
+                    </div>
+                    <div id="time-range-label">Loading...</div>
+                    <div id="filter-info">Showing all stories.</div>
+                </div>
+                <div class="table-container">
+                    <table class="min-w-full divide-y divide-gray-600">
+                        <thead class="bg-gray-700">
+                             <tr>
+                                <th scope="col">Time</th> <th scope="col">End Time</th> <th scope="col">Type</th>
+                                <th scope="col">H3 Index</th> <th scope="col">Description</th> <th scope="col">Source</th>
+                            </tr>
+                        </thead>
+                        <tbody id="story-table-body" class="bg-gray-800 divide-y divide-gray-600">
+                            <tr><td colspan="6" class="text-center p-4 text-gray-400">Generating data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="add-story-sidebar">
+            <div class="sidebar-header">
+                 <h2 class="sidebar-title">Add a New Story</h2>
+                 <button id="sidebar-close-btn" class="sidebar-close-btn" title="Close">&times;</button>
+            </div>
+            <form id="add-story-form">
+                 <div>
+                    <label class="location-type-label">Location Type:</label>
+                    <div class="location-type-options mb-4">
+                        <label class="inline-flex items-center"> <input type="radio" name="locationType" value="h3" checked class="form-radio h-4 w-4 text-blue-400 bg-gray-700 border-gray-600"/> <span class="ml-2 text-sm">H3 Cell</span> </label>
+                         <label class="inline-flex items-center ml-4" title="Point selection not implemented"><input type="radio" name="locationType" value="point" disabled class="form-radio h-4 w-4 bg-gray-700 border-gray-600"/><span class="ml-2 text-gray-500">Point</span></label>
+                         <label class="inline-flex items-center ml-4" title="Path drawing not implemented"><input type="radio" name="locationType" value="path" disabled class="form-radio h-4 w-4 bg-gray-700 border-gray-600"/><span class="ml-2 text-gray-500">Path</span></label>
+                    </div>
+                </div>
+                 <div> <label htmlFor="story-location-h3" class="block mb-1 font-medium text-sm text-gray-300">Location (Click Map for H3 Cell) <span class="text-red-400">*</span></label> <input type="text" id="story-location-h3" name="h3Index" readOnly required placeholder="Click map to select H3 cell..." className="w-full p-2 border border-gray-600 rounded-md mb-1 text-sm bg-gray-600 text-gray-100 cursor-not-allowed"/> <div id="location-info" class="text-xs text-gray-400 mb-4 min-h-[1.2em]"></div> </div>
+                 <div><label htmlFor="story-timestamp" class="block mb-1 font-medium text-sm text-gray-300">Start Timestamp <span class="text-red-400">*</span></label><input type="datetime-local" id="story-timestamp" name="timestamp" required className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50" style={{colorScheme: 'dark'}}/></div>
+                 <div><label htmlFor="story-end-timestamp" class="block mb-1 font-medium text-sm text-gray-300">End Timestamp (Optional)</label><input type="datetime-local" id="story-end-timestamp" name="endTimestamp" className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50" style={{colorScheme: 'dark'}}/></div>
+                 <div><label htmlFor="story-type" class="block mb-1 font-medium text-sm text-gray-300">Data Type <span class="text-red-400">*</span></label><select id="story-type" name="dataType" required className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"><option value="" disabled selected>Select type...</option><option value="remoteSensing">Remote Sensing</option><option value="economic">Economic</option><option value="journalism">Journalism</option><option value="health">Health</option></select></div>
+                 <div><label htmlFor="story-description" class="block mb-1 font-medium text-sm text-gray-300">Description / Title <span class="text-red-400">*</span></label><textarea id="story-description" name="description" rows="3" required className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"></textarea></div>
+                 <div><label htmlFor="story-source" class="block mb-1 font-medium text-sm text-gray-300">Source (Optional)</label><input type="text" id="story-source" name="source" className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"/></div>
+                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow-sm">Add Story to Map</button>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Configuration ---
+        const HYDERABAD_COORDS = [17.3850, 78.4867];
+        const INITIAL_ZOOM = 11;
+        const H3_RESOLUTION = 6;
+        const NUM_RANDOM_STORIES = 150;
+        const TIME_RANGE_YEARS = 5;
+        const HISTOGRAM_BIN_TYPE = 'quarterly'; // 'yearly' or 'quarterly'
+
+        // --- Global State ---
+        let allStories = [];
+        let filteredStories = [];
+        let h3Layers = {}; // Stores Leaflet layers { h3Index: { layer: L.Polygon, count: number } }
+        let selectedH3Index = null;
+        let minTimestamp = 0;
+        let maxTimestamp = 0;
+        let selectedStartTime = 0;
+        let selectedEndTime = 0;
+        let histogramBins = [];
+        let maxHistogramCount = 0;
+        let selectedLocationMarker = null; // Leaflet marker for Add Story
+        let mapInitialized = false;
+        let isAddingStory = false; // Flag for Add Story mode
+
+        // --- DOM Elements ---
+        const mapElement = document.getElementById('map');
+        const tableBody = document.getElementById('story-table-body');
+        const filterInfo = document.getElementById('filter-info');
+        const addStoryBtn = document.getElementById('add-story-btn');
+        const addStorySidebar = document.getElementById('add-story-sidebar');
+        const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+        const addStoryForm = document.getElementById('add-story-form');
+        const locationH3Input = document.getElementById('story-location-h3');
+        const locationLatInput = document.getElementById('story-location-lat'); // Keep hidden input if needed
+        const locationLngInput = document.getElementById('story-location-lng'); // Keep hidden input if needed
+        const locationInfoDiv = document.getElementById('location-info');
+        const storyTimestampInput = document.getElementById('story-timestamp');
+        const storyEndTimestampInput = document.getElementById('story-end-timestamp');
+        const timeSliderStart = document.getElementById('time-slider-start');
+        const timeSliderEnd = document.getElementById('time-slider-end');
+        const timeRangeLabel = document.getElementById('time-range-label');
+        const timelineHistogram = document.getElementById('timeline-histogram');
+        const timelineYearLabels = document.getElementById('timeline-year-labels');
+        const histogramSelection = document.getElementById('timeline-histogram-selection');
+
+        // --- Leaflet Map Instance ---
+        let map;
+
+        // --- Helper Functions ---
+        function formatTimestampShort(isoString) { if (!isoString) return "N/A"; try { return new Date(isoString).toLocaleDateString('en-CA'); } catch (e) { return "Invalid"; } }
+        function formatTimestampFull(timestampMillis) { if (!timestampMillis) return "N/A"; try { return new Date(timestampMillis).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return "Invalid"; } }
+        function formatTimestampForInput(isoString) { if (!isoString) return ""; try { const d=new Date(isoString), o=d.getTimezoneOffset()*60000; return new Date(d.getTime()-o).toISOString().slice(0,16); } catch (e) { console.error("Err format input:", isoString, e); return ""; } }
+        function h3ToLeafletPolygon(h3Index) {
+            try {
+                const boundary = h3.cellToBoundary(h3Index); // Use global h3
+                if (!boundary || boundary.length === 0) return null;
+                return boundary; // Leaflet expects [lat, lon]
+            } catch (e) { console.error(`Err H3 convert ${h3Index}:`, e); return null; }
+        }
+
+        // --- Data Generation ---
+        function generateRandomStories(count) { /* ... same ... */ console.log(`Generating ${count} random stories...`); const stories = []; const dataTypes = ['remoteSensing', 'economic', 'journalism', 'health']; const now = new Date(); const fiveYrs = new Date(now.getFullYear() - TIME_RANGE_YEARS, now.getMonth(), now.getDate()); const minTs = fiveYrs.getTime(); const maxTs = now.getTime(); const minLat = 17.2, maxLat = 17.6, minLng = 78.2, maxLng = 78.7; for (let i = 0; i < count; i++) { const lat = minLat + Math.random() * (maxLat - minLat); const lng = minLng + Math.random() * (maxLng - minLng); let h3Index = ''; try { h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION); } catch (e) { continue; } const startTsMs = minTs + Math.random() * (maxTs - minTs); const startTsISO = new Date(startTsMs).toISOString(); let endTsISO = null; if (Math.random() < 0.3) { const duration = Math.random() * 30 * 24 * 60 * 60 * 1000; const endTsMs = startTsMs + duration; if (endTsMs <= maxTs) { endTsISO = new Date(endTsMs).toISOString(); } } const dataType = dataTypes[Math.floor(Math.random() * dataTypes.length)]; const description = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} report #${i + 1}`; const source = `Source ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`; stories.push({ id: `story-${i}`, h3Index: h3Index, timestamp: startTsISO, dataType: dataType, data: { description: description, source: source, endTimestamp: endTsISO || undefined } }); } console.log(`Generated ${stories.length} stories.`); return stories; }
+
+        // --- Table Rendering ---
+        function renderTable(storiesToRender) { /* ... same ... */ tableBody.innerHTML = ''; if (!storiesToRender || storiesToRender.length === 0) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-400">No stories match filters.</td></tr>'; return; } const frag = document.createDocumentFragment(); storiesToRender.forEach(story => { const row = document.createElement('tr'); row.innerHTML = `<td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.timestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.data.endTimestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${story.dataType}</td><td class="px-3 py-2 whitespace-nowrap text-xs">${story.h3Index}</td><td class="px-3 py-2 whitespace-normal">${story.data.description}</td><td class="px-3 py-2 whitespace-nowrap">${story.data.source || 'N/A'}</td>`; frag.appendChild(row); }); tableBody.appendChild(frag); }
+
+        // --- Map Visualization ---
+        function updateMapVisualization() {
+             if (!mapInitialized) return;
+            // Clear previous layers
+            Object.values(h3Layers).forEach(item => { if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer); });
+            h3Layers = {};
+
+            // Filter stories by time
+            const storiesInTimeWindow = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; return storyStart <= selectedEndTime && storyEnd >= selectedStartTime; });
+
+            // Calculate counts
+            const countsByH3 = storiesInTimeWindow.reduce((acc, story) => { acc[story.h3Index] = (acc[story.h3Index] || 0) + 1; return acc; }, {});
+            const counts = Object.values(countsByH3);
+            const maxCount = counts.length > 0 ? Math.max(...counts) : 0;
+
+            // Draw polygons
+            for (const h3Index in countsByH3) {
+                const count = countsByH3[h3Index];
+                const polygonCoords = h3ToLeafletPolygon(h3Index);
+                if (!polygonCoords) continue;
+
+                // Dark theme heatmap colors (Blues)
+                const heatmapColors = ['#eff6ff', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa'];
+                let colorIndex = 0;
+                if (maxCount > 0) { const scale = count / maxCount; colorIndex = Math.min(Math.floor(scale * heatmapColors.length), heatmapColors.length - 1); }
+                const fillColor = heatmapColors[colorIndex];
+                const isSelected = h3Index === selectedH3Index;
+
+                try {
+                    const polygon = L.polygon(polygonCoords, {
+                        color: isSelected ? '#ffffff' : '#6b7280', // White outline if selected
+                        weight: isSelected ? 2 : 0.5,
+                        fillColor: fillColor,
+                        fillOpacity: 0.7
+                    });
+
+                    polygon.bindTooltip(`H3: ${h3Index}<br>Stories: ${count}`, { sticky: true });
+
+                    // Conditional click handler
+                    polygon.on('click', (e) => {
+                        if (!isAddingStory) {
+                             console.log(`Clicked H3 cell: ${h3Index} (Count: ${count})`);
+                             selectedH3Index = h3Index;
+                             applyFilters();
+                             L.DomEvent.stop(e); // Stop propagation only when filtering
+                        } else {
+                             console.log(`Clicked existing H3 cell ${h3Index} while adding story - allowing event propagation.`);
+                             // Let the main map click handler (handleMapClickForLocation) catch it
+                        }
+                    });
+                    // Hover effect
+                    polygon.on('mouseover', function (e) { if (!isSelected) this.setStyle({ weight: 1.5, color: '#9ca3af' }); });
+                    polygon.on('mouseout', function (e) { if (!isSelected) this.setStyle({ weight: 0.5, color: '#6b7280' }); });
+
+                    polygon.addTo(map);
+                    h3Layers[h3Index] = { layer: polygon, count: count };
+                } catch (polygonError) { console.error(`Error creating polygon for H3 ${h3Index}:`, polygonError); }
+            }
+        }
+
+        // --- Filtering Logic ---
+        function applyFilters() { if (!mapInitialized) { return; } filteredStories = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; const timeMatch = storyStart <= selectedEndTime && storyEnd >= selectedStartTime; if (!timeMatch) return false; const h3Match = !selectedH3Index || story.h3Index === selectedH3Index; return h3Match; }); console.log("[ApplyFilters] Filtered stories count:", filteredStories.length); renderTable(filteredStories); updateMapVisualization(); updateFilterInfo(); updateHistogramColors(); updateHistogramSelectionHighlight(); }
+
+        // --- Update Filter Info ---
+        function updateFilterInfo() { let info = `Showing ${filteredStories.length} of ${allStories.length} stories. `; info += `Time: ${formatTimestampFull(selectedStartTime)} to ${formatTimestampFull(selectedEndTime)}. `; if (selectedH3Index) { info += `Location: ${selectedH3Index} <span id="clear-h3-filter">(Clear)</span>`; requestAnimationFrame(() => { const clrBtn = document.getElementById('clear-h3-filter'); if (clrBtn) { clrBtn.onclick = () => { console.log("Clearing H3 filter."); selectedH3Index = null; applyFilters(); }; } }); } else { info += `Location: All.`; } filterInfo.innerHTML = info; }
+
+        // --- Timeline Histogram Logic ---
+        function calculateHistogramBins() { /* ... same ... */ console.log("Calculating histogram bins (quarterly)..."); histogramBins = []; if (allStories.length === 0 || minTimestamp === Infinity || maxTimestamp === 0) return; const startYear = new Date(minTimestamp).getFullYear(); const endYear = new Date(maxTimestamp).getFullYear(); for (let year = startYear; year <= endYear; year++) { for (let quarter = 0; quarter < 4; quarter++) { const monthStart = quarter * 3; const binStartTime = new Date(year, monthStart, 1).getTime(); const binEndTime = new Date(year, monthStart + 3, 1).getTime() - 1; if (binStartTime <= maxTimestamp && binEndTime >= minTimestamp) { histogramBins.push({ year: year, quarter: quarter + 1, startTime: binStartTime, endTime: binEndTime, count: 0 }); } } } allStories.forEach(story => { const storyTime = new Date(story.timestamp).getTime(); for (const bin of histogramBins) { if (storyTime >= bin.startTime && storyTime <= bin.endTime) { bin.count++; break; } } }); maxHistogramCount = histogramBins.reduce((max, bin) => Math.max(max, bin.count), 0); console.log("Histogram bins calculated:", histogramBins.length); console.log("Max histogram count:", maxHistogramCount); }
+        function renderHistogram() { /* ... same ... */ console.log("Rendering histogram..."); timelineHistogram.innerHTML = ''; timelineYearLabels.innerHTML = ''; if (histogramBins.length === 0 || maxHistogramCount === 0) { timelineHistogram.innerHTML = '<div class="text-xs text-gray-500 p-2">No data for histogram</div>'; return; } const totalDuration = maxTimestamp - minTimestamp; const fragment = document.createDocumentFragment(); let currentYear = -1; histogramBins.forEach((bin, index) => { const bar = document.createElement('div'); bar.className = 'histogram-bar'; const heightPercent = maxHistogramCount > 0 ? (bin.count / maxHistogramCount) * 100 : 0; bar.style.height = `${Math.max(heightPercent, 5)}%`; bar.dataset.startTime = bin.startTime; bar.dataset.endTime = bin.endTime; bar.title = `${bin.year}-Q${bin.quarter}: ${bin.count} stories`; fragment.appendChild(bar); const binYear = new Date(bin.startTime).getFullYear(); if (binYear !== currentYear) { currentYear = binYear; const label = document.createElement('div'); label.className = 'year-label'; const labelPosPercent = (index / histogramBins.length) * 100; label.style.left = `${labelPosPercent}%`; label.textContent = binYear; timelineYearLabels.appendChild(label); } }); timelineHistogram.appendChild(fragment); updateHistogramColors(); updateHistogramSelectionHighlight(); }
+        function updateHistogramColors() { /* ... same ... */ const bars = timelineHistogram.querySelectorAll('.histogram-bar'); bars.forEach(bar => { const binStart = parseFloat(bar.dataset.startTime); const binEnd = parseFloat(bar.dataset.endTime); const isActive = binStart <= selectedEndTime && binEnd >= selectedStartTime; if (isActive) { bar.classList.add('active'); } else { bar.classList.remove('active'); } }); }
+        function updateHistogramSelectionHighlight() { /* ... same ... */ if (!histogramSelection || maxTimestamp === minTimestamp) return; const totalDuration = maxTimestamp - minTimestamp; const startPercent = ((selectedStartTime - minTimestamp) / totalDuration) * 100; const endPercent = ((selectedEndTime - minTimestamp) / totalDuration) * 100; const widthPercent = endPercent - startPercent; histogramSelection.style.left = `${Math.max(0, startPercent)}%`; histogramSelection.style.width = `${Math.min(100, Math.max(0, widthPercent))}%`; }
+
+        // --- Timeline Range Slider Logic ---
+        function setupTimeline() { /* ... same ... */ if (allStories.length === 0) { return; } minTimestamp = allStories.reduce((min, s) => Math.min(min, new Date(s.timestamp).getTime()), Infinity); maxTimestamp = allStories.reduce((max, s) => { const sTs=new Date(s.timestamp).getTime(); const eTs=s.data.endTimestamp?new Date(s.data.endTimestamp).getTime():sTs; return Math.max(max, sTs, eTs); }, 0); if (minTimestamp === Infinity || maxTimestamp === 0 || minTimestamp === maxTimestamp) { /* Handle no range */ timeSliderStart.disabled = true; timeSliderEnd.disabled = true; timeRangeLabel.textContent = "Not enough data for range"; return; } calculateHistogramBins(); renderHistogram(); selectedStartTime = minTimestamp; selectedEndTime = maxTimestamp; timeSliderStart.min = minTimestamp; timeSliderStart.max = maxTimestamp; timeSliderStart.value = minTimestamp; timeSliderEnd.min = minTimestamp; timeSliderEnd.max = maxTimestamp; timeSliderEnd.value = maxTimestamp; timeSliderStart.disabled = false; timeSliderEnd.disabled = false; updateTimeRangeLabel(); timeSliderStart.addEventListener('input', handleTimeSliderChange); timeSliderEnd.addEventListener('input', handleTimeSliderChange); timeSliderStart.addEventListener('change', applyFilters); timeSliderEnd.addEventListener('change', applyFilters); }
+        function handleTimeSliderChange() { /* ... same ... */ let startVal = parseFloat(timeSliderStart.value); let endVal = parseFloat(timeSliderEnd.value); if (startVal > endVal) { if (this.id === 'time-slider-start') { timeSliderEnd.value = startVal; endVal = startVal; } else { timeSliderStart.value = endVal; startVal = endVal; } } selectedStartTime = startVal; selectedEndTime = endVal; updateTimeRangeLabel(); updateHistogramColors(); updateHistogramSelectionHighlight(); }
+        function updateTimeRangeLabel() { /* ... same ... */ timeRangeLabel.textContent = `${formatTimestampFull(selectedStartTime)} - ${formatTimestampFull(selectedEndTime)}`; }
+
+
+        // --- Add Story Sidebar Functionality ---
+        function showAddStorySidebar() { /* ... same ... */ if (isAddingStory) return; console.log("Opening Add Story sidebar."); isAddingStory = true; addStoryForm.reset(); document.querySelector('input[name="locationType"][value="h3"]').checked = true; locationH3Input.value = ''; locationInfoDiv.textContent = 'Click map to select H3 cell...'; storyTimestampInput.value = formatTimestampForInput(new Date().toISOString()); storyEndTimestampInput.value = ""; if (selectedLocationMarker) { map.removeLayer(selectedLocationMarker); selectedLocationMarker = null; } addStorySidebar.classList.add('active'); mapElement.classList.add('select-mode'); map.on('click', handleMapClickForLocation); console.log("Map click listener ADDED for Add Story."); }
+        function hideAddStorySidebar() { /* ... same ... */ if (!isAddingStory) return; console.log("Closing Add Story sidebar."); isAddingStory = false; addStorySidebar.classList.remove('active'); mapElement.classList.remove('select-mode'); map.off('click', handleMapClickForLocation); console.log("Map click listener REMOVED for Add Story."); if (selectedLocationMarker) { map.removeLayer(selectedLocationMarker); selectedLocationMarker = null; } }
+        function handleMapClickForLocation(e) { /* ... same ... */ const selectedLocationType = document.querySelector('input[name="locationType"]:checked')?.value; if (selectedLocationType !== 'h3') { console.log("Map clicked, but location type is not H3."); return; } const { lat, lng } = e.latlng; console.log(`Map clicked for Add Story (H3 Mode) at: Lat ${lat}, Lng ${lng}`); try { const h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION); locationH3Input.value = h3Index; locationInfoDiv.textContent = `Selected H3: ${h3Index}`; if (selectedLocationMarker) { selectedLocationMarker.setLatLng(e.latlng); } else { selectedLocationMarker = L.marker(e.latlng, { icon: L.divIcon({className: 'h3-selection-marker', html: '📍', iconSize: [20, 20]}), draggable: false }).addTo(map); } selectedLocationMarker.bindTooltip(`Selected H3: ${h3Index}`).openTooltip(); L.DomEvent.stop(e); console.log("Stopped map click event propagation after H3 selection."); } catch (error) { console.error("Error converting lat/lng to H3:", error); locationInfoDiv.textContent = 'Error selecting H3 cell.'; } }
+        function handleAddStorySubmit(event) { /* ... same ... */ event.preventDefault(); console.log("[AddStorySubmit] Form submitted."); const formData = new FormData(addStoryForm); const locationType = formData.get('locationType'); let h3Index = null; if (locationType === 'h3') { h3Index = formData.get('h3Index'); if (!h3Index) { alert("Please select an H3 cell location by clicking on the map."); console.log("[AddStorySubmit] Aborted: No H3 index."); return; } console.log("[AddStorySubmit] Location Type: H3, Index:", h3Index); } else { alert("Selected location type is not yet implemented."); console.log("[AddStorySubmit] Aborted: Location type not H3."); return; } const tsLocal = formData.get('timestamp'); const endTsLocal = formData.get('endTimestamp'); const dType = formData.get('dataType'); const desc = formData.get('description'); const src = formData.get('source'); const media = formData.get('mediaUrl'); console.log("[AddStorySubmit] Raw Form Data:", { tsLocal, endTsLocal, dType, desc, src, media }); if (!tsLocal || !dType || !desc) { alert("Please fill Start Time, Type, and Description."); console.log("[AddStorySubmit] Aborted: Missing required fields."); return; } try { const tsISO = new Date(tsLocal).toISOString(); let endTsISO = endTsLocal ? new Date(endTsLocal).toISOString() : undefined; if (endTsISO && new Date(endTsISO) < new Date(tsISO)) { alert("End timestamp must be after start timestamp."); console.log("[AddStorySubmit] Aborted: End time before start time."); return; } const newStory = { id: `story-${allStories.length}`, h3Index: h3Index, timestamp: tsISO, dataType: dType, data: { description: desc, source: src || undefined, mediaUrl: media || undefined, endTimestamp: endTsISO } }; console.log("[AddStorySubmit] New story object created:", newStory); allStories.push(newStory); console.log("[AddStorySubmit] Story pushed to allStories. New count:", allStories.length); console.log("[AddStorySubmit] Calling setupTimeline..."); setupTimeline(); console.log("[AddStorySubmit] Calling applyFilters..."); applyFilters(); console.log("[AddStorySubmit] Calling hideAddStorySidebar..."); hideAddStorySidebar(); console.log("[AddStorySubmit] Alerting user..."); alert("Story added successfully!"); console.log("[AddStorySubmit] Finished."); } catch (error) { console.error("[AddStorySubmit] Error processing form data or updating UI:", error); alert("An error occurred while adding the story. Please check console for details."); } }
+
+
+        // --- Initial Load ---
+        window.onload = () => {
+            console.log("Window loaded.");
+            try {
+                // Initialize Leaflet map
+                map = L.map(mapElement, { preferCanvas: true }).setView(HYDERABAD_COORDS, INITIAL_ZOOM);
+                // Add base layer (using OSM with CSS filter for dark mode)
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19, attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                mapInitialized = true;
+                console.log("Map initialized flag SET.");
+
+                // Map background click listener
+                map.on('click', (e) => {
+                    // Ignore clicks if sidebar is open OR if the click was on a polygon layer
+                    if (isAddingStory || e.originalEvent.target.closest('.leaflet-interactive')) return;
+                    console.log("Map background clicked - clearing H3 filter.");
+                    selectedH3Index = null;
+                    applyFilters();
+                });
+
+                // Check for H3 library
+                if (typeof h3 === 'undefined' || typeof h3.latLngToCell === 'undefined' || typeof h3.cellToBoundary === 'undefined') { throw new Error("H3 library failed to load or is missing functions!"); }
+                console.log("H3 library loaded.");
+
+                // Generate data and setup UI
+                allStories = generateRandomStories(NUM_RANDOM_STORIES);
+                filteredStories = [...allStories];
+                setupTimeline();
+                renderTable(filteredStories);
+                applyFilters(); // Apply initial filter
+
+                // Attach sidebar listeners
+                if (addStoryBtn) addStoryBtn.addEventListener('click', showAddStorySidebar); else console.error("Add Story Button not found");
+                if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', hideAddStorySidebar); else console.error("Sidebar Close Button not found");
+                if (addStoryForm) { console.log("Found addStoryForm element. Attaching submit listener."); addStoryForm.addEventListener('submit', handleAddStorySubmit); }
+                else { console.error("Could not find addStoryForm element! Submit will not work."); alert("Error: Could not initialize the story submission form."); }
+
+                // Resize listener
+                window.addEventListener('resize', () => { console.log("Window resized."); map.invalidateSize(); renderHistogram(); });
+
+                console.log("Initialization complete.");
+
+             } catch (error) {
+                 console.error("Error during initialization:", error);
+                 alert("An error occurred during page load. Some features might not work. Check console for details.");
+             }
+        };
+
+    </script>
+
+</body>
+</html>
