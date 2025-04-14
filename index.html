@@ -30,7 +30,9 @@
         /* --- Timeline Area Styling (Dark Theme) --- */
         .timeline-container { padding: 0.75rem 1.5rem; background-color: #111827; border-bottom: 1px solid #374151; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2); z-index: 20; display: flex; flex-direction: column; }
         .timeline-top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 0.5rem;}
-        .timeline-top-row span { color: #d1d5db; font-weight: 500; }
+        .timeline-top-row .title-group { display: flex; align-items: center; gap: 0.5rem; /* Add gap */ }
+        .timeline-top-row .title-group span { color: #d1d5db; font-weight: 500; }
+        .timeline-top-row .title-group .info-icon { color: #9ca3af; /* Gray 400 */ cursor: help; } /* Style for info icon */
         #timeline-year-labels { width: 100%; height: 16px; display: flex; position: relative; margin-bottom: 2px; font-size: 0.65rem; color: #9ca3af; }
         .year-label { position: absolute; transform: translateX(-50%); }
         #timeline-histogram-wrapper { position: relative; width: 100%; height: 50px; margin-bottom: 0.75rem; background-color: #374151; border-radius: 0.25rem; padding: 2px; }
@@ -87,8 +89,8 @@
         .leaflet-grab.select-mode { cursor: crosshair !important; }
         .h3-selection-marker { font-size: 1.5rem; text-shadow: 0 0 3px black; }
 
-         /* Leaflet Dark Mode Adjustments */
-        .leaflet-tile-pane { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7); } /* Apply CSS filter for dark map tiles */
+         /* Leaflet Dark Mode Adjustments - REMOVED CSS filter */
+        /* .leaflet-tile-pane { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7); } */
         .leaflet-tooltip { background-color: rgba(40, 40, 40, 0.9) !important; color: #f0f0f0 !important; border: 1px solid #555 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.5) !important; }
         .leaflet-popup-content-wrapper { background-color: #282828 !important; color: #f0f0f0 !important; border-radius: 4px !important; }
         .leaflet-popup-tip { background-color: #282828 !important; }
@@ -98,13 +100,19 @@
 
     </style>
 </head>
-<body class="bg-gray-900"> <div class="main-layout">
+<body class="bg-gray-900">
+    <div class="main-layout">
         <div class="map-content-container">
             <div id="map"></div>
             <div class="controls-data-container">
                 <div class="timeline-container">
                     <div class="timeline-top-row">
-                        <span class="text-sm font-semibold text-gray-300">Filter Time Range:</span>
+                        <div class="title-group">
+                             <span class="text-sm font-semibold text-gray-300">Filter Time Range:</span>
+                             <span title="Usage: Use sliders below histogram to filter time range. Click colored hexagons on map to filter by location (click map background to clear). Click '+ Add Story' to contribute data (select H3 cell by clicking map).">
+                                 <i class="fas fa-info-circle info-icon"></i>
+                             </span>
+                        </div>
                         <button id="add-story-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md transition duration-150 ease-in-out shadow-sm">
                             + Add Story
                         </button>
@@ -155,12 +163,12 @@
                          <label class="inline-flex items-center ml-4" title="Path drawing not implemented"><input type="radio" name="locationType" value="path" disabled class="form-radio h-4 w-4 bg-gray-700 border-gray-600"/><span class="ml-2 text-gray-500">Path</span></label>
                     </div>
                 </div>
-                 <div> <label htmlFor="story-location-h3" class="block mb-1 font-medium text-sm text-gray-300">Location (Click Map for H3 Cell) <span class="text-red-400">*</span></label> <input type="text" id="story-location-h3" name="h3Index" readOnly required placeholder="Click map to select H3 cell..." className="w-full p-2 border border-gray-600 rounded-md mb-1 text-sm bg-gray-600 text-gray-100 cursor-not-allowed"/> <div id="location-info" class="text-xs text-gray-400 mb-4 min-h-[1.2em]"></div> </div>
-                 <div><label htmlFor="story-timestamp" class="block mb-1 font-medium text-sm text-gray-300">Start Timestamp <span class="text-red-400">*</span></label><input type="datetime-local" id="story-timestamp" name="timestamp" required className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50" style={{colorScheme: 'dark'}}/></div>
-                 <div><label htmlFor="story-end-timestamp" class="block mb-1 font-medium text-sm text-gray-300">End Timestamp (Optional)</label><input type="datetime-local" id="story-end-timestamp" name="endTimestamp" className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50" style={{colorScheme: 'dark'}}/></div>
-                 <div><label htmlFor="story-type" class="block mb-1 font-medium text-sm text-gray-300">Data Type <span class="text-red-400">*</span></label><select id="story-type" name="dataType" required className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"><option value="" disabled selected>Select type...</option><option value="remoteSensing">Remote Sensing</option><option value="economic">Economic</option><option value="journalism">Journalism</option><option value="health">Health</option></select></div>
-                 <div><label htmlFor="story-description" class="block mb-1 font-medium text-sm text-gray-300">Description / Title <span class="text-red-400">*</span></label><textarea id="story-description" name="description" rows="3" required className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"></textarea></div>
-                 <div><label htmlFor="story-source" class="block mb-1 font-medium text-sm text-gray-300">Source (Optional)</label><input type="text" id="story-source" name="source" className="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"/></div>
+                 <div> <label for="story-location-h3" class="block mb-1 font-medium text-sm text-gray-300">Location (Click Map for H3 Cell) <span class="text-red-400">*</span></label> <input type="text" id="story-location-h3" name="h3Index" readOnly required placeholder="Click map to select H3 cell..." class="w-full p-2 border border-gray-600 rounded-md mb-1 text-sm bg-gray-600 text-gray-100 cursor-not-allowed"/> <div id="location-info" class="text-xs text-gray-400 mb-4 min-h-[1.2em]"></div> </div>
+                 <div><label for="story-timestamp" class="block mb-1 font-medium text-sm text-gray-300">Start Timestamp <span class="text-red-400">*</span></label><input type="datetime-local" id="story-timestamp" name="timestamp" required class="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50" style="colorScheme: dark;"/></div>
+                 <div><label for="story-end-timestamp" class="block mb-1 font-medium text-sm text-gray-300">End Timestamp (Optional)</label><input type="datetime-local" id="story-end-timestamp" name="endTimestamp" class="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50" style="colorScheme: dark;"/></div>
+                 <div><label for="story-type" class="block mb-1 font-medium text-sm text-gray-300">Data Type <span class="text-red-400">*</span></label><select id="story-type" name="dataType" required class="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"><option value="" disabled selected>Select type...</option><option value="remoteSensing">Remote Sensing</option><option value="economic">Economic</option><option value="journalism">Journalism</option><option value="health">Health</option></select></div>
+                 <div><label for="story-description" class="block mb-1 font-medium text-sm text-gray-300">Description / Title <span class="text-red-400">*</span></label><textarea id="story-description" name="description" rows="3" required class="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"></textarea></div>
+                 <div><label for="story-source" class="block mb-1 font-medium text-sm text-gray-300">Source (Optional)</label><input type="text" id="story-source" name="source" class="w-full p-2 border border-gray-600 rounded-md mb-4 text-sm bg-gray-700 text-gray-100 focus:border-blue-400 focus:ring focus:ring-blue-300 focus:ring-opacity-50"/></div>
                  <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow-sm">Add Story to Map</button>
             </form>
         </div>
@@ -174,12 +182,17 @@
         const H3_RESOLUTION = 6;
         const NUM_RANDOM_STORIES = 150;
         const TIME_RANGE_YEARS = 5;
-        const HISTOGRAM_BIN_TYPE = 'quarterly'; // 'yearly' or 'quarterly'
+        const HISTOGRAM_BIN_TYPE = 'quarterly';
+        // --- !!! IMPORTANT: Replace with your actual Mapbox Access Token !!! ---
+        const MAPBOX_TOKEN = 'pk.eyJ1IjoiZ2VtaW5pLWRlbW8iLCJhIjoiY2x1d2l4bWc1MDBzZTJqcW54dGRiYm5zayJ9.QzJPkf4_h6GfPNQO34QO1Q'; // Replace!
+        // --- Use the custom Mapbox style ID provided by the user ---
+        const MAPBOX_STYLE_ID = 'vr00n-nycsbus/clyynufyd017401qo1olp2n5f';
+
 
         // --- Global State ---
         let allStories = [];
         let filteredStories = [];
-        let h3Layers = {}; // Stores Leaflet layers { h3Index: { layer: L.Polygon, count: number } }
+        let h3Layers = {};
         let selectedH3Index = null;
         let minTimestamp = 0;
         let maxTimestamp = 0;
@@ -187,9 +200,9 @@
         let selectedEndTime = 0;
         let histogramBins = [];
         let maxHistogramCount = 0;
-        let selectedLocationMarker = null; // Leaflet marker for Add Story
+        let selectedLocationMarker = null;
         let mapInitialized = false;
-        let isAddingStory = false; // Flag for Add Story mode
+        let isAddingStory = false;
 
         // --- DOM Elements ---
         const mapElement = document.getElementById('map');
@@ -200,8 +213,8 @@
         const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
         const addStoryForm = document.getElementById('add-story-form');
         const locationH3Input = document.getElementById('story-location-h3');
-        const locationLatInput = document.getElementById('story-location-lat'); // Keep hidden input if needed
-        const locationLngInput = document.getElementById('story-location-lng'); // Keep hidden input if needed
+        const locationLatInput = document.getElementById('story-location-lat');
+        const locationLngInput = document.getElementById('story-location-lng');
         const locationInfoDiv = document.getElementById('location-info');
         const storyTimestampInput = document.getElementById('story-timestamp');
         const storyEndTimestampInput = document.getElementById('story-end-timestamp');
@@ -214,18 +227,13 @@
 
         // --- Leaflet Map Instance ---
         let map;
+        let currentTileLayer = null; // To manage the tile layer
 
         // --- Helper Functions ---
         function formatTimestampShort(isoString) { if (!isoString) return "N/A"; try { return new Date(isoString).toLocaleDateString('en-CA'); } catch (e) { return "Invalid"; } }
         function formatTimestampFull(timestampMillis) { if (!timestampMillis) return "N/A"; try { return new Date(timestampMillis).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return "Invalid"; } }
         function formatTimestampForInput(isoString) { if (!isoString) return ""; try { const d=new Date(isoString), o=d.getTimezoneOffset()*60000; return new Date(d.getTime()-o).toISOString().slice(0,16); } catch (e) { console.error("Err format input:", isoString, e); return ""; } }
-        function h3ToLeafletPolygon(h3Index) {
-            try {
-                const boundary = h3.cellToBoundary(h3Index); // Use global h3
-                if (!boundary || boundary.length === 0) return null;
-                return boundary; // Leaflet expects [lat, lon]
-            } catch (e) { console.error(`Err H3 convert ${h3Index}:`, e); return null; }
-        }
+        function h3ToLeafletPolygon(h3Index) { try { const boundary = h3.cellToBoundary(h3Index); if (!boundary || boundary.length === 0) return null; return boundary; } catch (e) { console.error(`Err H3 convert ${h3Index}:`, e); return null; } }
 
         // --- Data Generation ---
         function generateRandomStories(count) { /* ... same ... */ console.log(`Generating ${count} random stories...`); const stories = []; const dataTypes = ['remoteSensing', 'economic', 'journalism', 'health']; const now = new Date(); const fiveYrs = new Date(now.getFullYear() - TIME_RANGE_YEARS, now.getMonth(), now.getDate()); const minTs = fiveYrs.getTime(); const maxTs = now.getTime(); const minLat = 17.2, maxLat = 17.6, minLng = 78.2, maxLng = 78.7; for (let i = 0; i < count; i++) { const lat = minLat + Math.random() * (maxLat - minLat); const lng = minLng + Math.random() * (maxLng - minLng); let h3Index = ''; try { h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION); } catch (e) { continue; } const startTsMs = minTs + Math.random() * (maxTs - minTs); const startTsISO = new Date(startTsMs).toISOString(); let endTsISO = null; if (Math.random() < 0.3) { const duration = Math.random() * 30 * 24 * 60 * 60 * 1000; const endTsMs = startTsMs + duration; if (endTsMs <= maxTs) { endTsISO = new Date(endTsMs).toISOString(); } } const dataType = dataTypes[Math.floor(Math.random() * dataTypes.length)]; const description = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} report #${i + 1}`; const source = `Source ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`; stories.push({ id: `story-${i}`, h3Index: h3Index, timestamp: startTsISO, dataType: dataType, data: { description: description, source: source, endTimestamp: endTsISO || undefined } }); } console.log(`Generated ${stories.length} stories.`); return stories; }
@@ -234,70 +242,13 @@
         function renderTable(storiesToRender) { /* ... same ... */ tableBody.innerHTML = ''; if (!storiesToRender || storiesToRender.length === 0) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-400">No stories match filters.</td></tr>'; return; } const frag = document.createDocumentFragment(); storiesToRender.forEach(story => { const row = document.createElement('tr'); row.innerHTML = `<td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.timestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.data.endTimestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${story.dataType}</td><td class="px-3 py-2 whitespace-nowrap text-xs">${story.h3Index}</td><td class="px-3 py-2 whitespace-normal">${story.data.description}</td><td class="px-3 py-2 whitespace-nowrap">${story.data.source || 'N/A'}</td>`; frag.appendChild(row); }); tableBody.appendChild(frag); }
 
         // --- Map Visualization ---
-        function updateMapVisualization() {
-             if (!mapInitialized) return;
-            // Clear previous layers
-            Object.values(h3Layers).forEach(item => { if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer); });
-            h3Layers = {};
-
-            // Filter stories by time
-            const storiesInTimeWindow = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; return storyStart <= selectedEndTime && storyEnd >= selectedStartTime; });
-
-            // Calculate counts
-            const countsByH3 = storiesInTimeWindow.reduce((acc, story) => { acc[story.h3Index] = (acc[story.h3Index] || 0) + 1; return acc; }, {});
-            const counts = Object.values(countsByH3);
-            const maxCount = counts.length > 0 ? Math.max(...counts) : 0;
-
-            // Draw polygons
-            for (const h3Index in countsByH3) {
-                const count = countsByH3[h3Index];
-                const polygonCoords = h3ToLeafletPolygon(h3Index);
-                if (!polygonCoords) continue;
-
-                // Dark theme heatmap colors (Blues)
-                const heatmapColors = ['#eff6ff', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa'];
-                let colorIndex = 0;
-                if (maxCount > 0) { const scale = count / maxCount; colorIndex = Math.min(Math.floor(scale * heatmapColors.length), heatmapColors.length - 1); }
-                const fillColor = heatmapColors[colorIndex];
-                const isSelected = h3Index === selectedH3Index;
-
-                try {
-                    const polygon = L.polygon(polygonCoords, {
-                        color: isSelected ? '#ffffff' : '#6b7280', // White outline if selected
-                        weight: isSelected ? 2 : 0.5,
-                        fillColor: fillColor,
-                        fillOpacity: 0.7
-                    });
-
-                    polygon.bindTooltip(`H3: ${h3Index}<br>Stories: ${count}`, { sticky: true });
-
-                    // Conditional click handler
-                    polygon.on('click', (e) => {
-                        if (!isAddingStory) {
-                             console.log(`Clicked H3 cell: ${h3Index} (Count: ${count})`);
-                             selectedH3Index = h3Index;
-                             applyFilters();
-                             L.DomEvent.stop(e); // Stop propagation only when filtering
-                        } else {
-                             console.log(`Clicked existing H3 cell ${h3Index} while adding story - allowing event propagation.`);
-                             // Let the main map click handler (handleMapClickForLocation) catch it
-                        }
-                    });
-                    // Hover effect
-                    polygon.on('mouseover', function (e) { if (!isSelected) this.setStyle({ weight: 1.5, color: '#9ca3af' }); });
-                    polygon.on('mouseout', function (e) { if (!isSelected) this.setStyle({ weight: 0.5, color: '#6b7280' }); });
-
-                    polygon.addTo(map);
-                    h3Layers[h3Index] = { layer: polygon, count: count };
-                } catch (polygonError) { console.error(`Error creating polygon for H3 ${h3Index}:`, polygonError); }
-            }
-        }
+        function updateMapVisualization() { /* ... same heatmap logic ... */ if (!mapInitialized) return; Object.values(h3Layers).forEach(item => { if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer); }); h3Layers = {}; const storiesInTimeWindow = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; return storyStart <= selectedEndTime && storyEnd >= selectedStartTime; }); const countsByH3 = storiesInTimeWindow.reduce((acc, story) => { acc[story.h3Index] = (acc[story.h3Index] || 0) + 1; return acc; }, {}); const counts = Object.values(countsByH3); const maxCount = counts.length > 0 ? Math.max(...counts) : 0; let drawnCount = 0; for (const h3Index in countsByH3) { const count = countsByH3[h3Index]; const polygonCoords = h3ToLeafletPolygon(h3Index); if (!polygonCoords) continue; const heatmapColors = ['#eff6ff', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa']; let colorIndex = 0; if (maxCount > 0) { const scale = count / maxCount; colorIndex = Math.min(Math.floor(scale * heatmapColors.length), heatmapColors.length - 1); } const fillColor = heatmapColors[colorIndex]; const isSelected = h3Index === selectedH3Index; try { const polygon = L.polygon(polygonCoords, { color: isSelected ? '#ffffff' : '#6b7280', weight: isSelected ? 2 : 0.5, fillColor: fillColor, fillOpacity: 0.7 }); polygon.bindTooltip(`H3: ${h3Index}<br>Stories: ${count}`, { sticky: true }); polygon.on('click', (e) => { if (!isAddingStory) { console.log(`Clicked H3 cell: ${h3Index} (Count: ${count})`); selectedH3Index = h3Index; applyFilters(); L.DomEvent.stop(e); } else { console.log(`Clicked existing H3 cell ${h3Index} while adding story - allowing event propagation.`); } }); polygon.on('mouseover', function (e) { if (!isSelected) this.setStyle({ weight: 1.5, color: '#9ca3af' }); }); polygon.on('mouseout', function (e) { if (!isSelected) this.setStyle({ weight: 0.5, color: '#6b7280' }); }); polygon.addTo(map); h3Layers[h3Index] = { layer: polygon, count: count }; drawnCount++; } catch (polygonError) { console.error(`Error creating polygon for H3 ${h3Index}:`, polygonError); } } }
 
         // --- Filtering Logic ---
-        function applyFilters() { if (!mapInitialized) { return; } filteredStories = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; const timeMatch = storyStart <= selectedEndTime && storyEnd >= selectedStartTime; if (!timeMatch) return false; const h3Match = !selectedH3Index || story.h3Index === selectedH3Index; return h3Match; }); console.log("[ApplyFilters] Filtered stories count:", filteredStories.length); renderTable(filteredStories); updateMapVisualization(); updateFilterInfo(); updateHistogramColors(); updateHistogramSelectionHighlight(); }
+        function applyFilters() { /* ... same ... */ if (!mapInitialized) { return; } filteredStories = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; const timeMatch = storyStart <= selectedEndTime && storyEnd >= selectedStartTime; if (!timeMatch) return false; const h3Match = !selectedH3Index || story.h3Index === selectedH3Index; return h3Match; }); console.log("[ApplyFilters] Filtered stories count:", filteredStories.length); renderTable(filteredStories); updateMapVisualization(); updateFilterInfo(); updateHistogramColors(); updateHistogramSelectionHighlight(); }
 
         // --- Update Filter Info ---
-        function updateFilterInfo() { let info = `Showing ${filteredStories.length} of ${allStories.length} stories. `; info += `Time: ${formatTimestampFull(selectedStartTime)} to ${formatTimestampFull(selectedEndTime)}. `; if (selectedH3Index) { info += `Location: ${selectedH3Index} <span id="clear-h3-filter">(Clear)</span>`; requestAnimationFrame(() => { const clrBtn = document.getElementById('clear-h3-filter'); if (clrBtn) { clrBtn.onclick = () => { console.log("Clearing H3 filter."); selectedH3Index = null; applyFilters(); }; } }); } else { info += `Location: All.`; } filterInfo.innerHTML = info; }
+        function updateFilterInfo() { /* ... same ... */ let info = `Showing ${filteredStories.length} of ${allStories.length} stories. `; info += `Time: ${formatTimestampFull(selectedStartTime)} to ${formatTimestampFull(selectedEndTime)}. `; if (selectedH3Index) { info += `Location: ${selectedH3Index} <span id="clear-h3-filter">(Clear)</span>`; requestAnimationFrame(() => { const clrBtn = document.getElementById('clear-h3-filter'); if (clrBtn) { clrBtn.onclick = () => { console.log("Clearing H3 filter."); selectedH3Index = null; applyFilters(); }; } }); } else { info += `Location: All.`; } filterInfo.innerHTML = info; }
 
         // --- Timeline Histogram Logic ---
         function calculateHistogramBins() { /* ... same ... */ console.log("Calculating histogram bins (quarterly)..."); histogramBins = []; if (allStories.length === 0 || minTimestamp === Infinity || maxTimestamp === 0) return; const startYear = new Date(minTimestamp).getFullYear(); const endYear = new Date(maxTimestamp).getFullYear(); for (let year = startYear; year <= endYear; year++) { for (let quarter = 0; quarter < 4; quarter++) { const monthStart = quarter * 3; const binStartTime = new Date(year, monthStart, 1).getTime(); const binEndTime = new Date(year, monthStart + 3, 1).getTime() - 1; if (binStartTime <= maxTimestamp && binEndTime >= minTimestamp) { histogramBins.push({ year: year, quarter: quarter + 1, startTime: binStartTime, endTime: binEndTime, count: 0 }); } } } allStories.forEach(story => { const storyTime = new Date(story.timestamp).getTime(); for (const bin of histogramBins) { if (storyTime >= bin.startTime && storyTime <= bin.endTime) { bin.count++; break; } } }); maxHistogramCount = histogramBins.reduce((max, bin) => Math.max(max, bin.count), 0); console.log("Histogram bins calculated:", histogramBins.length); console.log("Max histogram count:", maxHistogramCount); }
@@ -324,16 +275,39 @@
             try {
                 // Initialize Leaflet map
                 map = L.map(mapElement, { preferCanvas: true }).setView(HYDERABAD_COORDS, INITIAL_ZOOM);
-                // Add base layer (using OSM with CSS filter for dark mode)
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
+
+                // --- MODIFICATION: Add Mapbox Tile Layer ---
+                if (!MAPBOX_TOKEN || MAPBOX_TOKEN.includes('YOUR_MAPBOX_TOKEN')) {
+                     console.warn("Mapbox token not set. Using default OSM tiles with CSS filter.");
+                     // Fallback to OSM with CSS filter if token is missing/default
+                     currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                         maxZoom: 19, attribution: '© OpenStreetMap contributors'
+                     }).addTo(map);
+                     // Re-add CSS filter if using OSM fallback
+                     mapElement.style.filter = 'brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7)';
+                } else {
+                     console.log("Using Mapbox Tile Layer with style:", MAPBOX_STYLE_ID);
+                     // Remove CSS filter if using Mapbox tiles
+                     mapElement.style.filter = 'none';
+                     // Construct Mapbox Tile URL
+                     const mapboxTileUrl = `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_ID}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`;
+                     currentTileLayer = L.tileLayer(mapboxTileUrl, {
+                         attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>',
+                         tileSize: 512,
+                         maxZoom: 18, // Adjust maxZoom based on Mapbox style limits if needed
+                         zoomOffset: -1,
+                         id: MAPBOX_STYLE_ID, // Store style ID if needed
+                         accessToken: MAPBOX_TOKEN
+                     }).addTo(map);
+                }
+                // --- END MODIFICATION ---
+
+
                 mapInitialized = true;
                 console.log("Map initialized flag SET.");
 
                 // Map background click listener
                 map.on('click', (e) => {
-                    // Ignore clicks if sidebar is open OR if the click was on a polygon layer
                     if (isAddingStory || e.originalEvent.target.closest('.leaflet-interactive')) return;
                     console.log("Map background clicked - clearing H3 filter.");
                     selectedH3Index = null;
