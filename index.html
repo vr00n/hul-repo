@@ -77,7 +77,6 @@
         #add-story-form button[type="submit"] { background-color: #2563eb; color: white; padding: 0.7rem 1.5rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; transition: background-color 0.2s ease; width: 100%; margin-top: 0.5rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.15); }
         #add-story-form button[type="submit"]:hover { background-color: #3b82f6; }
         #location-info { font-size: 0.8rem; color: #9ca3af; margin-top: -0.75rem; margin-bottom: 1rem; min-height: 1.2em;}
-        /* Removed location-type styles as elements are removed */
 
         /* Map cursor change */
         .leaflet-grab.select-mode { cursor: crosshair !important; }
@@ -196,25 +195,12 @@
         let isAddingStory = false;
 
         // --- DOM Elements ---
-        const mapElement = document.getElementById('map');
-        const tableBody = document.getElementById('story-table-body');
-        const filterInfo = document.getElementById('filter-info');
-        const addStoryBtn = document.getElementById('add-story-btn');
-        const addStorySidebar = document.getElementById('add-story-sidebar');
-        const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
-        const addStoryForm = document.getElementById('add-story-form');
-        const locationH3Input = document.getElementById('story-location-h3');
-        const locationLatInput = document.getElementById('story-location-lat');
-        const locationLngInput = document.getElementById('story-location-lng');
-        const locationInfoDiv = document.getElementById('location-info');
-        const storyTimestampInput = document.getElementById('story-timestamp');
-        const storyEndTimestampInput = document.getElementById('story-end-timestamp');
-        const timeSliderStart = document.getElementById('time-slider-start');
-        const timeSliderEnd = document.getElementById('time-slider-end');
-        const timeRangeLabel = document.getElementById('time-range-label');
-        const timelineHistogram = document.getElementById('timeline-histogram');
-        const timelineYearLabels = document.getElementById('timeline-year-labels');
-        const histogramSelection = document.getElementById('timeline-histogram-selection');
+        // It's crucial these are correct and fetched *after* the DOM is loaded.
+        // We will fetch them inside window.onload for safety.
+        let mapElement, tableBody, filterInfo, addStoryBtn, addStorySidebar, sidebarCloseBtn, addStoryForm,
+            locationH3Input, locationLatInput, locationLngInput, locationInfoDiv, storyTimestampInput,
+            storyEndTimestampInput, timeSliderStart, timeSliderEnd, timeRangeLabel,
+            timelineHistogram, timelineYearLabels, histogramSelection;
 
         // --- Leaflet Map Instance ---
         let map;
@@ -230,7 +216,7 @@
         function generateRandomStories(count) { /* ... same ... */ console.log(`Generating ${count} random stories...`); const stories = []; const dataTypes = ['remoteSensing', 'economic', 'journalism', 'health']; const now = new Date(); const fiveYrs = new Date(now.getFullYear() - TIME_RANGE_YEARS, now.getMonth(), now.getDate()); const minTs = fiveYrs.getTime(); const maxTs = now.getTime(); const minLat = 17.2, maxLat = 17.6, minLng = 78.2, maxLng = 78.7; for (let i = 0; i < count; i++) { const lat = minLat + Math.random() * (maxLat - minLat); const lng = minLng + Math.random() * (maxLng - minLng); let h3Index = ''; try { h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION); } catch (e) { continue; } const startTsMs = minTs + Math.random() * (maxTs - minTs); const startTsISO = new Date(startTsMs).toISOString(); let endTsISO = null; if (Math.random() < 0.3) { const duration = Math.random() * 30 * 24 * 60 * 60 * 1000; const endTsMs = startTsMs + duration; if (endTsMs <= maxTs) { endTsISO = new Date(endTsMs).toISOString(); } } const dataType = dataTypes[Math.floor(Math.random() * dataTypes.length)]; const description = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} report #${i + 1}`; const source = `Source ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`; stories.push({ id: `story-${i}`, h3Index: h3Index, timestamp: startTsISO, dataType: dataType, data: { description: description, source: source, endTimestamp: endTsISO || undefined } }); } console.log(`Generated ${stories.length} stories.`); return stories; }
 
         // --- Table Rendering ---
-        function renderTable(storiesToRender) { /* ... same ... */ tableBody.innerHTML = ''; if (!storiesToRender || storiesToRender.length === 0) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-400">No stories match filters.</td></tr>'; return; } const frag = document.createDocumentFragment(); storiesToRender.forEach(story => { const row = document.createElement('tr'); row.innerHTML = `<td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.timestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.data.endTimestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${story.dataType}</td><td class="px-3 py-2 whitespace-nowrap text-xs">${story.h3Index}</td><td class="px-3 py-2 whitespace-normal">${story.data.description}</td><td class="px-3 py-2 whitespace-nowrap">${story.data.source || 'N/A'}</td>`; frag.appendChild(row); }); tableBody.appendChild(frag); }
+        function renderTable(storiesToRender) { /* ... same ... */ if (!tableBody) return; tableBody.innerHTML = ''; if (!storiesToRender || storiesToRender.length === 0) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-400">No stories match filters.</td></tr>'; return; } const frag = document.createDocumentFragment(); storiesToRender.forEach(story => { const row = document.createElement('tr'); row.innerHTML = `<td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.timestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${formatTimestampShort(story.data.endTimestamp)}</td><td class="px-3 py-2 whitespace-nowrap">${story.dataType}</td><td class="px-3 py-2 whitespace-nowrap text-xs">${story.h3Index}</td><td class="px-3 py-2 whitespace-normal">${story.data.description}</td><td class="px-3 py-2 whitespace-nowrap">${story.data.source || 'N/A'}</td>`; frag.appendChild(row); }); tableBody.appendChild(frag); }
 
         // --- Map Visualization ---
         function updateMapVisualization() { /* ... same heatmap logic ... */ if (!mapInitialized) return; Object.values(h3Layers).forEach(item => { if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer); }); h3Layers = {}; const storiesInTimeWindow = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; return storyStart <= selectedEndTime && storyEnd >= selectedStartTime; }); const countsByH3 = storiesInTimeWindow.reduce((acc, story) => { acc[story.h3Index] = (acc[story.h3Index] || 0) + 1; return acc; }, {}); const counts = Object.values(countsByH3); const maxCount = counts.length > 0 ? Math.max(...counts) : 0; let drawnCount = 0; for (const h3Index in countsByH3) { const count = countsByH3[h3Index]; const polygonCoords = h3ToLeafletPolygon(h3Index); if (!polygonCoords) continue; const heatmapColors = ['#eff6ff', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa']; let colorIndex = 0; if (maxCount > 0) { const scale = count / maxCount; colorIndex = Math.min(Math.floor(scale * heatmapColors.length), heatmapColors.length - 1); } const fillColor = heatmapColors[colorIndex]; const isSelected = h3Index === selectedH3Index; try { const polygon = L.polygon(polygonCoords, { color: isSelected ? '#ffffff' : '#6b7280', weight: isSelected ? 2 : 0.5, fillColor: fillColor, fillOpacity: 0.7 }); polygon.bindTooltip(`H3: ${h3Index}<br>Stories: ${count}`, { sticky: true }); polygon.on('click', (e) => { if (!isAddingStory) { console.log(`Clicked H3 cell: ${h3Index} (Count: ${count})`); selectedH3Index = h3Index; applyFilters(); L.DomEvent.stop(e); } else { console.log(`Clicked existing H3 cell ${h3Index} while adding story - allowing event propagation.`); } }); polygon.on('mouseover', function (e) { if (!isSelected) this.setStyle({ weight: 1.5, color: '#9ca3af' }); }); polygon.on('mouseout', function (e) { if (!isSelected) this.setStyle({ weight: 0.5, color: '#6b7280' }); }); polygon.addTo(map); h3Layers[h3Index] = { layer: polygon, count: count }; drawnCount++; } catch (polygonError) { console.error(`Error creating polygon for H3 ${h3Index}:`, polygonError); } } }
@@ -239,37 +225,65 @@
         function applyFilters() { /* ... same ... */ if (!mapInitialized) { return; } filteredStories = allStories.filter(story => { const storyStart = new Date(story.timestamp).getTime(); const storyEnd = story.data.endTimestamp ? new Date(story.data.endTimestamp).getTime() : storyStart; const timeMatch = storyStart <= selectedEndTime && storyEnd >= selectedStartTime; if (!timeMatch) return false; const h3Match = !selectedH3Index || story.h3Index === selectedH3Index; return h3Match; }); console.log("[ApplyFilters] Filtered stories count:", filteredStories.length); renderTable(filteredStories); updateMapVisualization(); updateFilterInfo(); updateHistogramColors(); updateHistogramSelectionHighlight(); }
 
         // --- Update Filter Info ---
-        function updateFilterInfo() { /* ... same ... */ let info = `Showing ${filteredStories.length} of ${allStories.length} stories. `; info += `Time: ${formatTimestampFull(selectedStartTime)} to ${formatTimestampFull(selectedEndTime)}. `; if (selectedH3Index) { info += `Location: ${selectedH3Index} <span id="clear-h3-filter">(Clear)</span>`; requestAnimationFrame(() => { const clrBtn = document.getElementById('clear-h3-filter'); if (clrBtn) { clrBtn.onclick = () => { console.log("Clearing H3 filter."); selectedH3Index = null; applyFilters(); }; } }); } else { info += `Location: All.`; } filterInfo.innerHTML = info; }
+        function updateFilterInfo() { /* ... same ... */ if (!filterInfo) return; let info = `Showing ${filteredStories.length} of ${allStories.length} stories. `; info += `Time: ${formatTimestampFull(selectedStartTime)} to ${formatTimestampFull(selectedEndTime)}. `; if (selectedH3Index) { info += `Location: ${selectedH3Index} <span id="clear-h3-filter">(Clear)</span>`; requestAnimationFrame(() => { const clrBtn = document.getElementById('clear-h3-filter'); if (clrBtn) { clrBtn.onclick = () => { console.log("Clearing H3 filter."); selectedH3Index = null; applyFilters(); }; } }); } else { info += `Location: All.`; } filterInfo.innerHTML = info; }
 
         // --- Timeline Histogram Logic ---
         function calculateHistogramBins() { /* ... same ... */ console.log("Calculating histogram bins (quarterly)..."); histogramBins = []; if (allStories.length === 0 || minTimestamp === Infinity || maxTimestamp === 0) return; const startYear = new Date(minTimestamp).getFullYear(); const endYear = new Date(maxTimestamp).getFullYear(); for (let year = startYear; year <= endYear; year++) { for (let quarter = 0; quarter < 4; quarter++) { const monthStart = quarter * 3; const binStartTime = new Date(year, monthStart, 1).getTime(); const binEndTime = new Date(year, monthStart + 3, 1).getTime() - 1; if (binStartTime <= maxTimestamp && binEndTime >= minTimestamp) { histogramBins.push({ year: year, quarter: quarter + 1, startTime: binStartTime, endTime: binEndTime, count: 0 }); } } } allStories.forEach(story => { const storyTime = new Date(story.timestamp).getTime(); for (const bin of histogramBins) { if (storyTime >= bin.startTime && storyTime <= bin.endTime) { bin.count++; break; } } }); maxHistogramCount = histogramBins.reduce((max, bin) => Math.max(max, bin.count), 0); console.log("Histogram bins calculated:", histogramBins.length); console.log("Max histogram count:", maxHistogramCount); }
-        function renderHistogram() { /* ... same ... */ console.log("Rendering histogram..."); timelineHistogram.innerHTML = ''; timelineYearLabels.innerHTML = ''; if (histogramBins.length === 0 || maxHistogramCount === 0) { timelineHistogram.innerHTML = '<div class="text-xs text-gray-500 p-2">No data for histogram</div>'; return; } const totalDuration = maxTimestamp - minTimestamp; const fragment = document.createDocumentFragment(); let currentYear = -1; histogramBins.forEach((bin, index) => { const bar = document.createElement('div'); bar.className = 'histogram-bar'; const heightPercent = maxHistogramCount > 0 ? (bin.count / maxHistogramCount) * 100 : 0; bar.style.height = `${Math.max(heightPercent, 5)}%`; bar.dataset.startTime = bin.startTime; bar.dataset.endTime = bin.endTime; bar.title = `${bin.year}-Q${bin.quarter}: ${bin.count} stories`; fragment.appendChild(bar); const binYear = new Date(bin.startTime).getFullYear(); if (binYear !== currentYear) { currentYear = binYear; const label = document.createElement('div'); label.className = 'year-label'; const labelPosPercent = (index / histogramBins.length) * 100; label.style.left = `${labelPosPercent}%`; label.textContent = binYear; timelineYearLabels.appendChild(label); } }); timelineHistogram.appendChild(fragment); updateHistogramColors(); updateHistogramSelectionHighlight(); }
-        function updateHistogramColors() { /* ... same ... */ const bars = timelineHistogram.querySelectorAll('.histogram-bar'); bars.forEach(bar => { const binStart = parseFloat(bar.dataset.startTime); const binEnd = parseFloat(bar.dataset.endTime); const isActive = binStart <= selectedEndTime && binEnd >= selectedStartTime; if (isActive) { bar.classList.add('active'); } else { bar.classList.remove('active'); } }); }
+        function renderHistogram() { /* ... same ... */ if (!timelineHistogram || !timelineYearLabels) return; console.log("Rendering histogram..."); timelineHistogram.innerHTML = ''; timelineYearLabels.innerHTML = ''; if (histogramBins.length === 0 || maxHistogramCount === 0) { timelineHistogram.innerHTML = '<div class="text-xs text-gray-500 p-2">No data for histogram</div>'; return; } const totalDuration = maxTimestamp - minTimestamp; const fragment = document.createDocumentFragment(); let currentYear = -1; histogramBins.forEach((bin, index) => { const bar = document.createElement('div'); bar.className = 'histogram-bar'; const heightPercent = maxHistogramCount > 0 ? (bin.count / maxHistogramCount) * 100 : 0; bar.style.height = `${Math.max(heightPercent, 5)}%`; bar.dataset.startTime = bin.startTime; bar.dataset.endTime = bin.endTime; bar.title = `${bin.year}-Q${bin.quarter}: ${bin.count} stories`; fragment.appendChild(bar); const binYear = new Date(bin.startTime).getFullYear(); if (binYear !== currentYear) { currentYear = binYear; const label = document.createElement('div'); label.className = 'year-label'; const labelPosPercent = (index / histogramBins.length) * 100; label.style.left = `${labelPosPercent}%`; label.textContent = binYear; timelineYearLabels.appendChild(label); } }); timelineHistogram.appendChild(fragment); updateHistogramColors(); updateHistogramSelectionHighlight(); }
+        function updateHistogramColors() { /* ... same ... */ if (!timelineHistogram) return; const bars = timelineHistogram.querySelectorAll('.histogram-bar'); bars.forEach(bar => { const binStart = parseFloat(bar.dataset.startTime); const binEnd = parseFloat(bar.dataset.endTime); const isActive = binStart <= selectedEndTime && binEnd >= selectedStartTime; if (isActive) { bar.classList.add('active'); } else { bar.classList.remove('active'); } }); }
         function updateHistogramSelectionHighlight() { /* ... same ... */ if (!histogramSelection || maxTimestamp === minTimestamp) return; const totalDuration = maxTimestamp - minTimestamp; const startPercent = ((selectedStartTime - minTimestamp) / totalDuration) * 100; const endPercent = ((selectedEndTime - minTimestamp) / totalDuration) * 100; const widthPercent = endPercent - startPercent; histogramSelection.style.left = `${Math.max(0, startPercent)}%`; histogramSelection.style.width = `${Math.min(100, Math.max(0, widthPercent))}%`; }
 
         // --- Timeline Range Slider Logic ---
         function setupTimeline() { /* ... same ... */ if (allStories.length === 0) { return; } minTimestamp = allStories.reduce((min, s) => Math.min(min, new Date(s.timestamp).getTime()), Infinity); maxTimestamp = allStories.reduce((max, s) => { const sTs=new Date(s.timestamp).getTime(); const eTs=s.data.endTimestamp?new Date(s.data.endTimestamp).getTime():sTs; return Math.max(max, sTs, eTs); }, 0); if (minTimestamp === Infinity || maxTimestamp === 0 || minTimestamp === maxTimestamp) { /* Handle no range */ timeSliderStart.disabled = true; timeSliderEnd.disabled = true; timeRangeLabel.textContent = "Not enough data for range"; return; } calculateHistogramBins(); renderHistogram(); selectedStartTime = minTimestamp; selectedEndTime = maxTimestamp; timeSliderStart.min = minTimestamp; timeSliderStart.max = maxTimestamp; timeSliderStart.value = minTimestamp; timeSliderEnd.min = minTimestamp; timeSliderEnd.max = maxTimestamp; timeSliderEnd.value = maxTimestamp; timeSliderStart.disabled = false; timeSliderEnd.disabled = false; updateTimeRangeLabel(); timeSliderStart.addEventListener('input', handleTimeSliderChange); timeSliderEnd.addEventListener('input', handleTimeSliderChange); timeSliderStart.addEventListener('change', applyFilters); timeSliderEnd.addEventListener('change', applyFilters); }
         function handleTimeSliderChange() { /* ... same ... */ let startVal = parseFloat(timeSliderStart.value); let endVal = parseFloat(timeSliderEnd.value); if (startVal > endVal) { if (this.id === 'time-slider-start') { timeSliderEnd.value = startVal; endVal = startVal; } else { timeSliderStart.value = endVal; startVal = endVal; } } selectedStartTime = startVal; selectedEndTime = endVal; updateTimeRangeLabel(); updateHistogramColors(); updateHistogramSelectionHighlight(); }
-        function updateTimeRangeLabel() { /* ... same ... */ timeRangeLabel.textContent = `${formatTimestampFull(selectedStartTime)} - ${formatTimestampFull(selectedEndTime)}`; }
+        function updateTimeRangeLabel() { /* ... same ... */ if (!timeRangeLabel) return; timeRangeLabel.textContent = `${formatTimestampFull(selectedStartTime)} - ${formatTimestampFull(selectedEndTime)}`; }
 
 
         // --- Add Story Sidebar Functionality ---
-        function showAddStorySidebar() { /* ... same ... */ if (isAddingStory) return; console.log("Opening Add Story sidebar."); isAddingStory = true; addStoryForm.reset(); document.querySelector('input[name="locationType"][value="h3"]').checked = true; locationH3Input.value = ''; locationInfoDiv.textContent = 'Click map to select H3 cell...'; storyTimestampInput.value = formatTimestampForInput(new Date().toISOString()); storyEndTimestampInput.value = ""; if (selectedLocationMarker) { map.removeLayer(selectedLocationMarker); selectedLocationMarker = null; } addStorySidebar.classList.add('active'); mapElement.classList.add('select-mode'); map.on('click', handleMapClickForLocation); console.log("Map click listener ADDED for Add Story."); }
-        function hideAddStorySidebar() { /* ... same ... */ if (!isAddingStory) return; console.log("Closing Add Story sidebar."); isAddingStory = false; addStorySidebar.classList.remove('active'); mapElement.classList.remove('select-mode'); map.off('click', handleMapClickForLocation); console.log("Map click listener REMOVED for Add Story."); if (selectedLocationMarker) { map.removeLayer(selectedLocationMarker); selectedLocationMarker = null; } }
-        function handleMapClickForLocation(e) { /* ... same ... */ const selectedLocationType = document.querySelector('input[name="locationType"]:checked')?.value; if (selectedLocationType !== 'h3') { console.log("Map clicked, but location type is not H3."); return; } const { lat, lng } = e.latlng; console.log(`Map clicked for Add Story (H3 Mode) at: Lat ${lat}, Lng ${lng}`); try { const h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION); locationH3Input.value = h3Index; locationInfoDiv.textContent = `Selected H3: ${h3Index}`; if (selectedLocationMarker) { selectedLocationMarker.setLatLng(e.latlng); } else { selectedLocationMarker = L.marker(e.latlng, { icon: L.divIcon({className: 'h3-selection-marker', html: '📍', iconSize: [20, 20]}), draggable: false }).addTo(map); } selectedLocationMarker.bindTooltip(`Selected H3: ${h3Index}`).openTooltip(); L.DomEvent.stop(e); console.log("Stopped map click event propagation after H3 selection."); } catch (error) { console.error("Error converting lat/lng to H3:", error); locationInfoDiv.textContent = 'Error selecting H3 cell.'; } }
-        function handleAddStorySubmit(event) { /* ... same ... */ event.preventDefault(); console.log("[AddStorySubmit] Form submitted."); const formData = new FormData(addStoryForm); const locationType = formData.get('locationType'); let h3Index = null; if (locationType === 'h3') { h3Index = formData.get('h3Index'); if (!h3Index) { alert("Please select an H3 cell location by clicking on the map."); console.log("[AddStorySubmit] Aborted: No H3 index."); return; } console.log("[AddStorySubmit] Location Type: H3, Index:", h3Index); } else { alert("Selected location type is not yet implemented."); console.log("[AddStorySubmit] Aborted: Location type not H3."); return; } const tsLocal = formData.get('timestamp'); const endTsLocal = formData.get('endTimestamp'); const dType = formData.get('dataType'); const desc = formData.get('description'); const src = formData.get('source'); const media = formData.get('mediaUrl'); console.log("[AddStorySubmit] Raw Form Data:", { tsLocal, endTsLocal, dType, desc, src, media }); if (!tsLocal || !dType || !desc) { alert("Please fill Start Time, Type, and Description."); console.log("[AddStorySubmit] Aborted: Missing required fields."); return; } try { const tsISO = new Date(tsLocal).toISOString(); let endTsISO = endTsLocal ? new Date(endTsLocal).toISOString() : undefined; if (endTsISO && new Date(endTsISO) < new Date(tsISO)) { alert("End timestamp must be after start timestamp."); console.log("[AddStorySubmit] Aborted: End time before start time."); return; } const newStory = { id: `story-${allStories.length}`, h3Index: h3Index, timestamp: tsISO, dataType: dType, data: { description: desc, source: src || undefined, mediaUrl: media || undefined, endTimestamp: endTsISO } }; console.log("[AddStorySubmit] New story object created:", newStory); allStories.push(newStory); console.log("[AddStorySubmit] Story pushed to allStories. New count:", allStories.length); console.log("[AddStorySubmit] Calling setupTimeline..."); setupTimeline(); console.log("[AddStorySubmit] Calling applyFilters..."); applyFilters(); console.log("[AddStorySubmit] Calling hideAddStorySidebar..."); hideAddStorySidebar(); console.log("[AddStorySubmit] Alerting user..."); alert("Story added successfully!"); console.log("[AddStorySubmit] Finished."); } catch (error) { console.error("[AddStorySubmit] Error processing form data or updating UI:", error); alert("An error occurred while adding the story. Please check console for details."); } }
+        function showAddStorySidebar() { /* ... same ... */ if (isAddingStory || !addStorySidebar || !mapElement) return; console.log("Opening Add Story sidebar."); isAddingStory = true; addStoryForm.reset(); locationH3Input.value = ''; locationInfoDiv.textContent = 'Click map to select H3 cell...'; storyTimestampInput.value = formatTimestampForInput(new Date().toISOString()); storyEndTimestampInput.value = ""; if (selectedLocationMarker) { map.removeLayer(selectedLocationMarker); selectedLocationMarker = null; } addStorySidebar.classList.add('active'); mapElement.classList.add('select-mode'); map.on('click', handleMapClickForLocation); console.log("Map click listener ADDED for Add Story."); }
+        function hideAddStorySidebar() { /* ... same ... */ if (!isAddingStory || !addStorySidebar || !mapElement) return; console.log("Closing Add Story sidebar."); isAddingStory = false; addStorySidebar.classList.remove('active'); mapElement.classList.remove('select-mode'); map.off('click', handleMapClickForLocation); console.log("Map click listener REMOVED for Add Story."); if (selectedLocationMarker) { map.removeLayer(selectedLocationMarker); selectedLocationMarker = null; } }
+        function handleMapClickForLocation(e) { /* ... same ... */ if (!locationH3Input || !locationInfoDiv) return; const { lat, lng } = e.latlng; console.log(`Map clicked for Add Story (H3 Mode) at: Lat ${lat}, Lng ${lng}`); try { const h3Index = h3.latLngToCell(lat, lng, H3_RESOLUTION); locationH3Input.value = h3Index; locationInfoDiv.textContent = `Selected H3: ${h3Index}`; if (selectedLocationMarker) { selectedLocationMarker.setLatLng(e.latlng); } else { selectedLocationMarker = L.marker(e.latlng, { icon: L.divIcon({className: 'h3-selection-marker', html: '📍', iconSize: [20, 20]}), draggable: false }).addTo(map); } selectedLocationMarker.bindTooltip(`Selected H3: ${h3Index}`).openTooltip(); L.DomEvent.stop(e); console.log("Stopped map click event propagation after H3 selection."); } catch (error) { console.error("Error converting lat/lng to H3:", error); locationInfoDiv.textContent = 'Error selecting H3 cell.'; } }
+        function handleAddStorySubmit(event) { /* ... same ... */ event.preventDefault(); console.log("[AddStorySubmit] Form submitted."); const formData = new FormData(addStoryForm); const h3Index = formData.get('h3Index'); if (!h3Index) { alert("Please select an H3 cell location by clicking on the map."); console.log("[AddStorySubmit] Aborted: No H3 index."); return; } const tsLocal = formData.get('timestamp'); const endTsLocal = formData.get('endTimestamp'); const dType = formData.get('dataType'); const desc = formData.get('description'); const src = formData.get('source'); console.log("[AddStorySubmit] Raw Form Data:", { tsLocal, endTsLocal, dType, desc, src }); if (!tsLocal || !dType || !desc) { alert("Please fill Start Time, Type, and Description."); console.log("[AddStorySubmit] Aborted: Missing required fields."); return; } try { const tsISO = new Date(tsLocal).toISOString(); let endTsISO = endTsLocal ? new Date(endTsLocal).toISOString() : undefined; if (endTsISO && new Date(endTsISO) < new Date(tsISO)) { alert("End timestamp must be after start timestamp."); console.log("[AddStorySubmit] Aborted: End time before start time."); return; } const newStory = { id: `story-${allStories.length}`, h3Index: h3Index, timestamp: tsISO, dataType: dType, data: { description: desc, source: src || undefined, endTimestamp: endTsISO } }; console.log("[AddStorySubmit] New story object created:", newStory); allStories.push(newStory); console.log("[AddStorySubmit] Story pushed to allStories. New count:", allStories.length); console.log("[AddStorySubmit] Calling setupTimeline..."); setupTimeline(); console.log("[AddStorySubmit] Calling applyFilters..."); applyFilters(); console.log("[AddStorySubmit] Calling hideAddStorySidebar..."); hideAddStorySidebar(); console.log("[AddStorySubmit] Alerting user..."); alert("Story added successfully!"); console.log("[AddStorySubmit] Finished."); } catch (error) { console.error("[AddStorySubmit] Error processing form data or updating UI:", error); alert("An error occurred while adding the story. Please check console for details."); } }
 
 
         // --- Initial Load ---
         window.onload = () => {
             console.log("Window loaded.");
             try {
+                 // --- Fetch DOM Elements ---
+                 mapElement = document.getElementById('map');
+                 tableBody = document.getElementById('story-table-body');
+                 filterInfo = document.getElementById('filter-info');
+                 addStoryBtn = document.getElementById('add-story-btn');
+                 addStorySidebar = document.getElementById('add-story-sidebar');
+                 sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+                 addStoryForm = document.getElementById('add-story-form');
+                 locationH3Input = document.getElementById('story-location-h3');
+                 locationLatInput = document.getElementById('story-location-lat');
+                 locationLngInput = document.getElementById('story-location-lng');
+                 locationInfoDiv = document.getElementById('location-info');
+                 storyTimestampInput = document.getElementById('story-timestamp');
+                 storyEndTimestampInput = document.getElementById('story-end-timestamp');
+                 timeSliderStart = document.getElementById('time-slider-start');
+                 timeSliderEnd = document.getElementById('time-slider-end');
+                 timeRangeLabel = document.getElementById('time-range-label');
+                 timelineHistogram = document.getElementById('timeline-histogram');
+                 timelineYearLabels = document.getElementById('timeline-year-labels');
+                 histogramSelection = document.getElementById('timeline-histogram-selection');
+
+                 // Check if essential elements were found
+                 if (!mapElement || !addStoryBtn || !addStorySidebar || !addStoryForm) {
+                     throw new Error("Essential DOM elements not found. Check HTML IDs.");
+                 }
+
                 // Initialize Leaflet map
                 map = L.map(mapElement, { preferCanvas: true }).setView(HYDERABAD_COORDS, INITIAL_ZOOM);
 
-                // --- Use Correct Mapbox Tile Layer URL ---
-                const placeholderToken = 'pk.eyJ1IjoiZ2VtaW5pLWRlbW8iLCJhIjoiY2x1d2l4bWc1MDBzZTJqcW54dGRiYm5zayJ9.QzJPkf4_h6GfPNQO34QO1Q';
-                if (!MAPBOX_TOKEN || MAPBOX_TOKEN === placeholderToken || MAPBOX_TOKEN.length < 10) {
+                // Use Correct Mapbox Tile Layer URL
+                const placeholderToken = 'pk.eyJ1IjoiZ2VtaW5pLWRlbW8iLCJhIjoiY2x1d2l4bWc1MDBzZTJqcW54dGRiYm5zayJ9.QzJPkf4_h6GfPNQO34QO1Q'; // Placeholder check
+                const actualToken = MAPBOX_TOKEN; // Use the constant defined above
+
+                if (!actualToken || actualToken === placeholderToken || actualToken.length < 10) {
                      console.warn("Mapbox token not set or is placeholder. Using default OSM tiles with CSS filter.");
                      currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                          maxZoom: 19, attribution: '© OpenStreetMap contributors'
@@ -277,12 +291,20 @@
                      mapElement.style.filter = 'brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7)';
                 } else {
                      console.log("Using Mapbox Tile Layer with style:", MAPBOX_STYLE_ID);
-                     mapElement.style.filter = 'none'; // Remove filter if using Mapbox
-                     const mapboxTileUrl = `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_ID}/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`;
+                     mapElement.style.filter = 'none';
+                     const mapboxTileUrl = `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_ID}/tiles/256/{z}/{x}/{y}?access_token=${actualToken}`;
                      currentTileLayer = L.tileLayer(mapboxTileUrl, {
                          attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>',
                          tileSize: 256, maxZoom: 18, zoomOffset: 0,
                      }).addTo(map);
+
+                     // Add error handling for tile layer
+                     currentTileLayer.on('tileerror', function(error, tile) {
+                         console.error('Mapbox Tile Error:', error);
+                         // Optionally fallback to OSM if Mapbox fails
+                         // if (map.hasLayer(currentTileLayer)) { map.removeLayer(currentTileLayer); }
+                         // Add OSM layer here as fallback
+                     });
                 }
 
                 mapInitialized = true;
@@ -303,10 +325,16 @@
                 applyFilters(); // Apply initial filter
 
                 // Attach sidebar listeners
-                if (addStoryBtn) addStoryBtn.addEventListener('click', showAddStorySidebar); else console.error("Add Story Button not found");
-                if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', hideAddStorySidebar); else console.error("Sidebar Close Button not found");
-                if (addStoryForm) { console.log("Found addStoryForm element. Attaching submit listener."); addStoryForm.addEventListener('submit', handleAddStorySubmit); }
-                else { console.error("Could not find addStoryForm element! Submit will not work."); alert("Error: Could not initialize the story submission form."); }
+                console.log("Checking Add Story Button Element:", addStoryBtn); // Debug log
+                addStoryBtn.addEventListener('click', showAddStorySidebar);
+                console.log("Attaching click listener to Add Story button"); // Debug log
+
+                sidebarCloseBtn.addEventListener('click', hideAddStorySidebar);
+
+                console.log("Checking Add Story Form Element:", addStoryForm); // Debug log
+                addStoryForm.addEventListener('submit', handleAddStorySubmit);
+                console.log("Attaching submit listener to form"); // Debug log
+
 
                 // Resize listener
                 window.addEventListener('resize', () => { console.log("Window resized."); map.invalidateSize(); renderHistogram(); });
